@@ -11,6 +11,15 @@ GPS 運動記錄網站。學生用手機在校園步道步行或慢跑，網站�
 
 ## 快速開始（練習版）
 
+Windows PowerShell（在專案根目錄執行）：
+
+```powershell
+cd .\public
+py -m http.server 8000
+```
+
+macOS／Linux（在專案根目錄執行）：
+
 ```bash
 cd public
 python3 -m http.server 8000

@@ -57,3 +57,9 @@ next-env.d.ts
 /.dev.vars
 /.dev.vars.*
 *.tsbuildinfo
+
+# 測試結果的檔案資料夾
+/my-tracks/
+
+# 修改方向的規格
+advise.txt

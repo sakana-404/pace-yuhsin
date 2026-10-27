@@ -63,7 +63,7 @@
     for (const pts of groups.values()) {
       if (pts.length < 2) continue;
       L.polyline(pts, { color: '#fff', weight: 9, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }).addTo(layer);
-      L.polyline(pts, { color: '#d95432', weight: 5, lineCap: 'round', lineJoin: 'round' }).addTo(layer);
+      L.polyline(pts, { color: r.trackColor || '#d95432', weight: 5, lineCap: 'round', lineJoin: 'round' }).addTo(layer);
     }
     const first = r.points[0], last = r.points[r.points.length - 1];
     const bounds = [[first.lat, first.lng]];
@@ -94,7 +94,9 @@
   function showFacts(r) {
     const km = r.meters / 1000, sec = r.seconds;
     const speed = sec > 0 ? km / (sec / 3600) : 0;
-    const computedKcal = isNum(r.met) && isNum(r.weight) ? MoveCore.calories(r.met, r.weight, sec) : 0;
+    const profile = { sex: r.sex, bodyFatPercent: r.bodyFatPercent, weight: r.weight, height: r.height, age: r.age };
+    const canRecalculate = isNum(r.met) && isNum(r.weight) && isNum(r.height) && isNum(r.age) && ['male', 'female'].includes(r.sex);
+    const computedKcal = canRecalculate ? MoveCore.calories(r.met, profile, sec) : 0;
     const kcal = isNum(r.kcal) ? r.kcal : computedKcal;
     $('statDistance').textContent = km.toFixed(2);
     $('statTime').textContent = fmtTime(sec);
@@ -112,6 +114,8 @@
     addFact(dl, '課堂代號', r.alias || '未填寫');
     addFact(dl, '活動方式', r.mode || '未記錄');
     addFact(dl, '身高 ／ 體重 ／ 年齡', [r.height, r.weight, r.age].map((v, i) => v == null ? '—' : v + ['cm', 'kg', '歲'][i]).join(' ／ '));
+    addFact(dl, '性別', r.sex === 'male' ? '男' : r.sex === 'female' ? '女' : '未記錄');
+    addFact(dl, '體脂率', isNum(r.bodyFatPercent) ? r.bodyFatPercent + '%' : '未提供');
     addFact(dl, '活動強度 MET', isNum(r.met) ? String(r.met) : '未記錄');
     addFact(dl, '有效定位點', pts.length + ' 個，分為 ' + segments + ' 段（暫停或斷訊後會另起一段）');
     addFact(dl, '起點座標', first.lat.toFixed(5) + ', ' + first.lng.toFixed(5));
@@ -121,8 +125,8 @@
       ? '終點到集合點直線約 ' + Math.round(MoveCore.distance(last, t)) + ' 公尺'
       : '這次紀錄未設定集合點');
     addFact(dl, '平均速度', speed.toFixed(2) + ' km/h（距離 ÷ 運動時間）');
-    addFact(dl, '熱量算式', (isNum(r.met) && isNum(r.weight))
-      ? r.met + ' × 3.5 × ' + r.weight + ' ÷ 200 × ' + (sec / 60).toFixed(1) + ' 分鐘 ＝ ' + kcal.toFixed(1) + ' kcal（估算值，非 GPS 測量）'
+    addFact(dl, '熱量算式', canRecalculate
+      ? (isNum(r.bodyFatPercent) ? 'LBM = 體重 × (1 − 體脂率)，BMR = 370 + 21.6 × LBM' : 'BMR 依性別、身高、體重與年齡估算') + '；BMR ÷ 24 × MET × ' + (sec / 3600).toFixed(2) + ' 小時 ＝ ' + kcal.toFixed(1) + ' kcal（估算值，非 GPS 測量）'
       : '未記錄');
   }
 

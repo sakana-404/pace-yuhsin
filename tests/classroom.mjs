@@ -13,7 +13,7 @@ assert.equal(isSameSiteWrite('https://school.example.com',null),false);
 const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("ok")}}',d1Databases:{DB:'pace-test'},compatibilityDate:'2026-05-15'});
 try{
 const db=await mf.getD1Database('DB');
-for(const sql of (await readFile('drizzle/0000_last_old_lace.sql','utf8')).split('--> statement-breakpoint'))if(sql.trim())await db.prepare(sql).run();
+for(const migration of ['0000_last_old_lace.sql','0001_add_profile_energy_fields.sql'])for(const sql of (await readFile('drizzle/'+migration,'utf8')).split('--> statement-breakpoint'))if(sql.trim())await db.prepare(sql).run();
 const teacher={userId:'teacher',email:'teacher@test.invalid'},other={userId:'other',email:'other@test.invalid'};
 const call=(user,isTeacher,op,data={},method='POST')=>classroom(db,user,isTeacher,method,op,data);
 const cls=await call(teacher,true,'createClass',{title:'TEST ONLY 60 STUDENTS',capacity:60});
@@ -26,11 +26,11 @@ await assert.rejects(()=>call(users[0],false,'dashboard',{classId:cls.classId,le
 await assert.rejects(()=>call(users[0],false,'createClass',{title:'bad',capacity:60}),e=>e.status===403);
 await assert.rejects(()=>call(other,true,'approve',{classId:cls.classId,memberId:dash.students[0].id}),e=>e.status===403);
 const enrolled=users.filter((_,i)=>joins[i].status==='fulfilled');
-const data=u=>({classId:cls.classId,lessonId:course.id,consent:true,record:{id:'test-'+u.userId,date:new Date().toISOString(),seconds:1200,meters:1500,met:3.5,weight:60,height:165,age:20,pointCount:100,state:'finished',demo:false,kcal:99999}});
+const data=u=>({classId:cls.classId,lessonId:course.id,consent:true,record:{id:'test-'+u.userId,date:new Date().toISOString(),seconds:1200,meters:1500,met:3.5,weight:60,height:165,age:20,sex:'male',bodyFatPercent:null,pointCount:100,state:'finished',demo:false,kcal:99999}});
 await assert.rejects(()=>call(enrolled[0],false,'submit',data(enrolled[0])),e=>e.status===403);
 for(const m of dash.students)await call(teacher,true,'approve',{classId:cls.classId,memberId:m.id});
 await Promise.all(enrolled.map(u=>call(u,false,'submit',data(u))));
-const results=await call(teacher,true,'dashboard',{classId:cls.classId,lessonId:course.id},'GET');assert.equal(results.students.filter(s=>s.activity_id).length,60);assert.equal(results.students[0].kcal,73.5);
+const results=await call(teacher,true,'dashboard',{classId:cls.classId,lessonId:course.id},'GET');assert.equal(results.students.filter(s=>s.activity_id).length,60);assert.ok(Math.abs(results.students[0].kcal-(1476.25/24*3.5*(1200/3600)))<1e-8);
 const own=await call(enrolled[0],false,'myActivities',{},'GET');assert.equal(own.activities.length,1);assert.equal(own.activities[0].user_id,enrolled[0].userId);
 const duplicate=await call(enrolled[0],false,'submit',data(enrolled[0]));assert.equal(duplicate.duplicate,true);
 const demo=data(enrolled[0]);demo.record.demo=true;await assert.rejects(()=>call(enrolled[0],false,'submit',demo),e=>e.status===400);
