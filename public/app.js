@@ -26,26 +26,50 @@ function setTrack(lines){
 }
 function persistRewards(){try{localStorage.setItem(REWARD_KEY,JSON.stringify(rewards));}catch{message('顏料資料無法寫入本機儲存空間。');}}
 function activePaint(){return rewards.pigments.find(p=>p.id===rewards.activePaintId)||null;}
+function availableDraws(){return Math.max(0,Math.floor(Math.max(0,Number(rewards.totalMeters)||0)/DRAW_METERS)-rewards.draws.length);}
 function setRouteColor(color){if(route)route.setStyle({color});const key=document.querySelector('.track-key');if(key)key.style.background=color;const label=$('activePaintLabel');if(label)label.style.setProperty('--active-paint',color);if(session&&session.state!=='finished')session.trackColor=color;}
 function renderRewards(){
-    const total=Math.max(0,Number(rewards.totalMeters)||0), earned=Math.floor(total/DRAW_METERS), available=Math.max(0,earned-rewards.draws.length), remainder=total%DRAW_METERS, special=(rewards.draws.length+1)%5===0;
+    const total=Math.max(0,Number(rewards.totalMeters)||0), available=availableDraws(), remainder=total%DRAW_METERS, special=(rewards.draws.length+1)%5===0;
     $('rewardTotal').textContent=(total/1000).toFixed(2);$('rewardAvailable').textContent=available;
     $('rewardProgress').value=available?100:remainder/DRAW_METERS*100;$('rewardProgressLabel').textContent=available?`已解鎖 ${available} 次抽卡`: `再走 ${((DRAW_METERS-remainder)/1000).toFixed(2)} km 解鎖下一抽`;
-    $('rewardDrawNo').textContent=`第 ${rewards.draws.length+1} 抽${special?' · 自選顏色':''}`;
-    $('rewardDraw').disabled=available===0||drawing;$('rewardDraw').textContent=drawing?'翻卡中…':available?(special?'選擇顏色':'開始抽卡'):'尚未解鎖';
-    $('rewardDrawHint').textContent=available?(special?'這次是每 5 抽一次的自選機會，請挑選想要的顏料。':`你有 ${available} 次抽卡機會，每次抽出一種顏料。`):'每累積步行 1 公里，就能抽一次顏料。';
-    $('rewardChooser').hidden=!(choosingColor&&available&&special);
+    $('rewardDrawNo').textContent=choosingColor?`第 ${selectableDrawNo} 抽 · 自選顏色`:`第 ${rewards.draws.length+1} 抽${special?' · 自選顏色':''}`;
+    $('rewardDraw').disabled=available===0||drawing||choosingColor;$('rewardDraw').textContent=choosingColor?'選擇這次顏色':drawing?'翻卡中…':available?'開始抽卡':'尚未解鎖';
+    $('rewardDrawHint').textContent=choosingColor?'抽卡已完成；可從下方挑選這次要保留的顏色。':available?`你有 ${available} 次抽卡機會，每次抽出一種顏料。`:'每累積步行 1 公里，就能抽一次顏料。';
+    $('rewardChooser').hidden=!choosingColor;
     const shelf=$('pigmentShelf');shelf.replaceChildren();
     if(!rewards.pigments.length){const empty=document.createElement('p');empty.className='reward-empty';empty.textContent='完成 1 公里後，來抽取第一份顏料。';shelf.append(empty);}
     for(const paint of rewards.pigments){const button=document.createElement('button');button.type='button';button.className='pigment-chip'+(paint.id===rewards.activePaintId?' selected':'');button.setAttribute('aria-pressed',String(paint.id===rewards.activePaintId));button.title=`套用${paint.name}繪製軌跡`;button.innerHTML=`<i style="--paint:${paint.color}"></i><span>${paint.name}</span>`;button.onclick=()=>{rewards.activePaintId=paint.id;persistRewards();setRouteColor(paint.color);renderRewards();message(`軌跡顏色已套用：${paint.name}。`);};shelf.append(button);}
     const current=activePaint();$('activePaintLabel').textContent=current?`目前軌跡顏色：${current.name}`:'尚未選擇顏料';$('activePaintSwatch').style.background=current?.color||'#d95432';
-    const chooser=$('rewardChooser');chooser.replaceChildren();if(choosingColor&&available&&special)for(const paint of PAINTS){const button=document.createElement('button');button.type='button';button.className='paint-option';button.innerHTML=`<i style="--paint:${paint.color}"></i><span>${paint.name}</span>`;button.onclick=()=>drawPaint(paint);chooser.append(button);}
+    const chooser=$('rewardChooser');chooser.replaceChildren();if(choosingColor){for(const paint of PAINTS){const button=document.createElement('button');button.type='button';button.className='paint-option';button.innerHTML=`<i style="--paint:${paint.color}"></i><span>${paint.name}</span>`;button.onclick=()=>selectDrawColor(paint);chooser.append(button);}const keep=document.createElement('button');keep.type='button';keep.className='paint-option';keep.textContent='保留抽中顏色';keep.onclick=()=>selectDrawColor(null);chooser.append(keep);}
     const history=$('drawHistory');history.replaceChildren();if(!rewards.draws.length){const empty=document.createElement('p');empty.className='reward-empty';empty.textContent='抽卡後，紀錄會顯示在這裡。';history.append(empty);}
     for(const draw of [...rewards.draws].reverse()){const row=document.createElement('div');row.className='draw-row';const swatch=document.createElement('i');swatch.style.background=draw.color;const detail=document.createElement('span'),title=document.createElement('strong'),meta=document.createElement('small');title.textContent=`第 ${draw.drawNo} 抽 · ${draw.name}`;meta.textContent=new Date(draw.at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});detail.append(title,meta);row.append(swatch,detail);history.append(row);}
 }
-let drawing=false, choosingColor=false;
-function drawPaint(paint){if(drawing||Math.floor(rewards.totalMeters/DRAW_METERS)<=rewards.draws.length)return;drawing=true;choosingColor=false;$('flipCard').classList.remove('revealed');$('flipCard').classList.add('is-flipping');renderRewards();setTimeout(()=>{const drawNo=rewards.draws.length+1,id=`paint-${Date.now()}-${drawNo}`,entry={id,color:paint.color,name:paint.name,drawNo,acquiredAt:new Date().toISOString()};rewards.draws.push({drawNo,color:paint.color,name:paint.name,at:entry.acquiredAt,totalMeters:rewards.totalMeters});rewards.pigments.push(entry);rewards.activePaintId=id;persistRewards();drawing=false;$('flipCard').classList.remove('is-flipping');$('flipCard').classList.add('revealed');$('rewardResultName').textContent=paint.name;$('rewardResultSwatch').style.background=paint.color;setRouteColor(paint.color);renderRewards();message(`抽到${paint.name}，已加入顏料庫並套用到軌跡。`);},520);}
-function requestDraw(){if(drawing||Math.floor(rewards.totalMeters/DRAW_METERS)<=rewards.draws.length)return;if((rewards.draws.length+1)%5===0){choosingColor=true;renderRewards();return;}drawPaint(PAINTS[Math.floor(Math.random()*PAINTS.length)]);}
+let drawing=false, choosingColor=false, selectableDrawNo=0;
+function drawPaint(paint,allowColorChoice=false){
+    if(!paint||drawing||choosingColor||availableDraws()===0)return;
+    const drawNo=rewards.draws.length+1,at=new Date().toISOString(),id=`paint-${Date.now()}-${drawNo}`;
+    const entry={id,color:paint.color,name:paint.name,drawNo,acquiredAt:at};
+    rewards.draws.push({drawNo,color:paint.color,name:paint.name,at,totalMeters:rewards.totalMeters});
+    rewards.pigments.push(entry);rewards.activePaintId=id;persistRewards();
+    drawing=true;choosingColor=allowColorChoice;selectableDrawNo=allowColorChoice?drawNo:0;$('flipCard').classList.remove('revealed');$('flipCard').classList.add('is-flipping');
+    setRouteColor(paint.color);renderRewards();
+    message(allowColorChoice?'抽卡成功，已扣除一次機會；可從下方自選或保留顏色。':'抽卡成功，顏料已加入並扣除一次機會。');
+    setTimeout(()=>{const result=rewards.pigments.find(item=>item.id===id)||entry;$('flipCard').classList.remove('is-flipping');$('flipCard').classList.add('revealed');$('rewardResultName').textContent=result.name;$('rewardResultSwatch').style.background=result.color;drawing=false;renderRewards();if(!allowColorChoice||choosingColor)message(allowColorChoice?`抽到${result.name}，已扣除一次機會；可從下方自選或保留此顏色。`:`抽到${result.name}，已加入顏料庫並套用到軌跡。`);},520);
+}
+function selectDrawColor(paint){
+    if(!choosingColor)return;
+    const entry=rewards.pigments.find(item=>item.drawNo===selectableDrawNo);
+    if(!entry)return;
+    if(paint){entry.name=paint.name;entry.color=paint.color;const draw=rewards.draws.find(item=>item.drawNo===selectableDrawNo);if(draw){draw.name=paint.name;draw.color=paint.color;}}
+    rewards.activePaintId=entry.id;persistRewards();choosingColor=false;selectableDrawNo=0;
+    $('rewardResultName').textContent=entry.name;$('rewardResultSwatch').style.background=entry.color;setRouteColor(entry.color);renderRewards();
+    message(`第 ${entry.drawNo} 抽已完成：${entry.name} 已加入顏料庫。`);
+}
+function requestDraw(){
+    if(drawing||choosingColor||availableDraws()===0)return;
+    const special=(rewards.draws.length+1)%5===0;
+    drawPaint(PAINTS[Math.floor(Math.random()*PAINTS.length)],special);
+}
 function clearStart(){
     if(startMarker&&map)map.removeLayer(startMarker);startMarker=null;
 }

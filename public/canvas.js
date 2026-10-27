@@ -16,6 +16,12 @@
     $('paintHelp').hidden = paints.length > 0;
   }
 
+  function refreshPaints() {
+    const before = paints.map(paint => `${paint.id}:${paint.name}:${paint.color}`).join('|');
+    loadPaints();
+    if (before !== paints.map(paint => `${paint.id}:${paint.name}:${paint.color}`).join('|')) renderLayers();
+  }
+
   function setupMap() {
     map = L.map('canvasMap', { zoomControl: true }).setView([24.1796, 120.6495], 14);
     addBaseMap(map);
@@ -126,6 +132,9 @@
   }
 
   setupMap(); loadPaints(); renderLayers();
+  window.addEventListener('storage', event => { if (event.key === REWARD_KEY || event.key === null) refreshPaints(); });
+  window.addEventListener('pageshow', refreshPaints);
+  window.addEventListener('focus', refreshPaints);
   $('files').addEventListener('change', event => importFiles(event.target.files));
   $('clearAll').onclick = () => { layers.splice(0); renderLayers(); setStatus('畫布已清空。'); };
   const drop = $('drop');
