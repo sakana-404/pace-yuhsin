@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const RECORDS_KEY = 'campus-move-history-v1', GOAL_KEY = 'campus-move-goal-v1';
+  const RECORDS_KEY = 'campus-move-history-v1', REWARDS_KEY = 'campus-move-rewards-v1', GOAL_KEY = 'campus-move-goal-v1';
   const SVG = 'http://www.w3.org/2000/svg';
   let records = [], period = 'week', goal = null;
 
@@ -40,6 +40,15 @@
       const updated = [...additions, ...records];
       try {
         localStorage.setItem(RECORDS_KEY, JSON.stringify(updated));
+        const importedMeters = additions.filter(record => !record.demo).reduce((sum, record) => sum + record.meters, 0);
+        if (importedMeters > 0) {
+          try {
+            let rewardState;
+            try { rewardState = JSON.parse(localStorage.getItem(REWARDS_KEY) || 'null'); } catch { rewardState = null; }
+            const oldMeters = Math.max(Number(rewardState?.totalMeters) || 0, records.filter(r => r && !r.demo).reduce((sum, r) => sum + (Number(r.meters) || 0), 0));
+            localStorage.setItem(REWARDS_KEY, JSON.stringify({ ...(rewardState && typeof rewardState === 'object' ? rewardState : {}), totalMeters: oldMeters + importedMeters, draws: Array.isArray(rewardState?.draws) ? rewardState.draws : [], pigments: Array.isArray(rewardState?.pigments) ? rewardState.pigments : [], activePaintId: rewardState?.activePaintId ?? null }));
+          } catch {}
+        }
         records = updated; renderPeriod(); renderGoal();
         status.textContent = `已匯入 ${additions.length} 筆紀錄${invalid.length ? `；${invalid.join('；')}` : ''}`;
       } catch { status.textContent = '裝置儲存空間不足，紀錄未能匯入。'; }

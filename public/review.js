@@ -2,7 +2,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const MAX_BYTES = 5 * 1024 * 1024;
-  const HISTORY_KEY = 'campus-move-history-v1';
+  const HISTORY_KEY = 'campus-move-history-v1', REWARDS_KEY = 'campus-move-rewards-v1';
   let reviewMap = null;
   let layer = null;
   let activeRecord = null;
@@ -23,6 +23,15 @@
     if (duplicate) { status.textContent = '這筆紀錄已在個人歷程與紀錄中。'; return; }
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify([activeRecord, ...records]));
+      if (!activeRecord.demo) {
+        try {
+          let rewardState;
+          try { rewardState = JSON.parse(localStorage.getItem(REWARDS_KEY) || 'null'); } catch { rewardState = null; }
+          const recordedMeters = records.filter(record => record && !record.demo).reduce((sum, record) => sum + (Number(record.meters) || 0), 0);
+          const totalMeters = Math.max(Number(rewardState?.totalMeters) || 0, recordedMeters) + activeRecord.meters;
+          localStorage.setItem(REWARDS_KEY, JSON.stringify({ ...(rewardState && typeof rewardState === 'object' ? rewardState : {}), totalMeters, draws: Array.isArray(rewardState?.draws) ? rewardState.draws : [], pigments: Array.isArray(rewardState?.pigments) ? rewardState.pigments : [], activePaintId: rewardState?.activePaintId ?? null }));
+        } catch {}
+      }
       status.textContent = '已加入個人歷程與紀錄，統計已更新。';
     } catch { status.textContent = '裝置儲存空間不足，無法加入紀錄。'; }
   }

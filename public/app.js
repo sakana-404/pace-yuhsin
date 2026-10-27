@@ -11,6 +11,7 @@ catch{}
 let rewards;
 try{rewards=JSON.parse(localStorage.getItem(REWARD_KEY)||'null');}catch{}
 if(!rewards||!Array.isArray(rewards.draws)||!Array.isArray(rewards.pigments))rewards={totalMeters:records.filter(r=>!r.demo).reduce((sum,r)=>sum+(Number(r.meters)||0),0),draws:[],pigments:[],activePaintId:null};
+const recordedMeters=records.filter(r=>r&&!r.demo).reduce((sum,r)=>sum+(Number(r.meters)||0),0);rewards.totalMeters=Math.max(0,Number(rewards.totalMeters)||0,recordedMeters);
 persistRewards();
 let map, route, halo=null, startMarker=null, positionDot, accuracyCircle, targetMarker, targetLine, target=null, current=null;
 let session=null, watch=null, demoTimer=null, wake=null, last=null, lastSignal=0, lines=[], storageOK=true;
@@ -101,8 +102,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&session?.s
 window.addEventListener('beforeunload',e=>{if(session&&session.state!=='finished'){e.preventDefault();e.returnValue='';}});
 setInterval(()=>{if(session?.state==='running'&&!session.demo&&Date.now()-lastSignal>30000)pause('超過 30 秒沒有 GPS 更新，已自動暫停。請檢查定位後按繼續。');render();},1000);
 function refreshHistoryFromStorage(){try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved)){records=saved;renderHistory();}}catch{}}
-window.addEventListener('storage',event=>{if(event.key===KEY)refreshHistoryFromStorage();});
-window.addEventListener('pageshow',event=>{if(event.persisted)refreshHistoryFromStorage();});
+function refreshRewardsFromStorage(){try{const saved=JSON.parse(localStorage.getItem(REWARD_KEY)||'null');if(saved&&Array.isArray(saved.draws)&&Array.isArray(saved.pigments))rewards=saved;const recordedMeters=records.filter(r=>r&&!r.demo).reduce((sum,r)=>sum+(Number(r.meters)||0),0);rewards.totalMeters=Math.max(0,Number(rewards.totalMeters)||0,recordedMeters);persistRewards();renderRewards();}catch{}}
+window.addEventListener('storage',event=>{if(event.key===KEY)refreshHistoryFromStorage();if(event.key===REWARD_KEY)refreshRewardsFromStorage();});
+window.addEventListener('pageshow',event=>{if(event.persisted){refreshHistoryFromStorage();refreshRewardsFromStorage();}});
 renderHistory();render();renderRewards();setRouteColor(activePaint()?.color||'#d95432');if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 $('rewardDraw').onclick=requestDraw;
