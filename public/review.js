@@ -95,13 +95,13 @@
     const km = r.meters / 1000, sec = r.seconds;
     const speed = sec > 0 ? km / (sec / 3600) : 0;
     const profile = { sex: r.sex, bodyFatPercent: r.bodyFatPercent, weight: r.weight, height: r.height, age: r.age };
-    const canRecalculate = isNum(r.met) && isNum(r.weight) && isNum(r.height) && isNum(r.age) && ['male', 'female'].includes(r.sex);
+    const canRecalculate = isNum(r.met) && isNum(r.weight) && (isNum(r.bodyFatPercent) || MoveCore.schofieldBmr(profile) !== null || (isNum(r.height) && isNum(r.age) && ['male', 'female'].includes(r.sex)));
     const computedKcal = canRecalculate ? MoveCore.calories(r.met, profile, sec) : 0;
-    const kcal = isNum(r.kcal) ? r.kcal : computedKcal;
+    const kcal = canRecalculate ? computedKcal : isNum(r.kcal) ? r.kcal : 0;
     $('statDistance').textContent = km.toFixed(2);
     $('statTime').textContent = fmtTime(sec);
     $('statSpeed').textContent = speed.toFixed(1);
-    $('statKcal').textContent = String(Math.round(kcal));
+    $('statKcal').textContent = kcal.toFixed(1);
 
     const dl = $('facts');
     dl.replaceChildren();
@@ -116,6 +116,7 @@
     addFact(dl, '身高 ／ 體重 ／ 年齡', [r.height, r.weight, r.age].map((v, i) => v == null ? '—' : v + ['cm', 'kg', '歲'][i]).join(' ／ '));
     addFact(dl, '性別', r.sex === 'male' ? '男' : r.sex === 'female' ? '女' : '未記錄');
     addFact(dl, '體脂率', isNum(r.bodyFatPercent) ? r.bodyFatPercent + '%' : '未提供');
+    addFact(dl, 'BMR 公式', MoveCore.bmrMethod(profile));
     addFact(dl, '活動強度 MET', isNum(r.met) ? String(r.met) : '未記錄');
     addFact(dl, '有效定位點', pts.length + ' 個，分為 ' + segments + ' 段（暫停或斷訊後會另起一段）');
     addFact(dl, '起點座標', first.lat.toFixed(5) + ', ' + first.lng.toFixed(5));
@@ -126,7 +127,7 @@
       : '這次紀錄未設定集合點');
     addFact(dl, '平均速度', speed.toFixed(2) + ' km/h（距離 ÷ 運動時間）');
     addFact(dl, '熱量算式', canRecalculate
-      ? (isNum(r.bodyFatPercent) ? 'LBM = 體重 × (1 − 體脂率)，BMR = 370 + 21.6 × LBM' : 'BMR 依性別、身高、體重與年齡估算') + '；BMR ÷ 24 × MET × ' + (sec / 3600).toFixed(2) + ' 小時 ＝ ' + kcal.toFixed(1) + ' kcal（估算值，非 GPS 測量）'
+      ? (isNum(r.bodyFatPercent) ? 'LBM = 體重 × (1 − 體脂率)，BMR = 370 + 21.6 × LBM' : MoveCore.bmrMethod(profile) + '，再依體重估算 BMR') + '；BMR ÷ 24 × MET × ' + (sec / 3600).toFixed(2) + ' 小時 ＝ ' + kcal.toFixed(1) + ' kcal（估算值，非 GPS 測量）'
       : '未記錄');
   }
 

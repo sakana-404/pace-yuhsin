@@ -7,16 +7,40 @@ function distance(a,b){
     return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
 }
 
+function schofieldBmr(profile){
+    if(!Number.isFinite(profile.age)||profile.age<3||profile.age>18||!Number.isFinite(profile.weight)||!['male','female'].includes(profile.sex))return null;
+    // The supplied 3–10 and 10–18 bands overlap at age 10; use 10–18 from the 10th birthday onward.
+    // These coefficients produce kcal/day; /1440 is only needed when converting to kcal/min.
+    const underTen=profile.age<10;
+    if(profile.sex==='male')return underTen?22.706*profile.weight+504.3:17.686*profile.weight+658.2;
+    return underTen?20.315*profile.weight+485.9:13.384*profile.weight+692.6;
+}
+
+function bmrMethod(profile){
+    if(Number.isFinite(profile.bodyFatPercent))return '體脂率去脂體重公式';
+    if(schofieldBmr(profile)!==null){
+        const young=profile.age<10,sex=profile.sex==='male'?'男':'女';
+        const coefficient=profile.sex==='male'?(young?'22.706':'17.686'):(young?'20.315':'13.384');
+        const constant=profile.sex==='male'?(young?'504.3':'658.2'):(young?'485.9':'692.6');
+        return `Schofield 青少年公式（${sex}，${young?'3–9':'10–18'} 歲）：${coefficient} × 體重 + ${constant} kcal/日`;
+    }
+    return '成人 Mifflin–St Jeor 公式';
+}
+
 function bmr(profile){
     if(Number.isFinite(profile.bodyFatPercent)){
         const leanMass=profile.weight*(1-profile.bodyFatPercent/100);
         return 370+21.6*leanMass;
     }
+    const juvenile=schofieldBmr(profile);
+    if(juvenile!==null)return juvenile;
     return 10*profile.weight+6.25*profile.height-5*profile.age+(profile.sex==='male'?5:-161);
 }
 
 function calories(met,profile,seconds){
-    return bmr(profile)/24*met*(seconds/3600);
+    const basalPerHour=bmr(profile)/24;
+    const durationHours=seconds/3600;
+    return basalPerHour*met*durationHours;
 }
 
 function slope(previous,p){
@@ -45,7 +69,7 @@ function accept(previous,p){
         return {ok:false,reason:'位置變化很小，已過濾可能的 GPS 飄移。'};
     return {ok:true,meters:d,break:false};
 }
-const api={distance,bmr,calories,slope,accept};
+const api={distance,schofieldBmr,bmr,bmrMethod,calories,slope,accept};
 if(typeof module!=='undefined')
     module.exports=api;
 else

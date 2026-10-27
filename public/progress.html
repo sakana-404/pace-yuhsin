@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#222824">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="progress.css">
+<title>個人歷程與目標 · PACE 校園運動</title>
+</head>
+<body>
+<main class="progress-page">
+  <header class="progress-top"><a class="progress-brand" href="index.html">// PACE <span>校園運動</span></a><nav><a href="index.html">運動首頁</a><a href="canvas.html">我的畫布</a></nav></header>
+  <section class="progress-intro"><div><span class="overline">YOUR MOVEMENT JOURNEY</span><h1>個人歷程與目標<span class="title-dot">.</span></h1><p>回顧每週、每月的運動累積，設定下一個想完成的目標。</p></div><a href="index.html#history">查看運動紀錄 ↗</a></section>
+  <section class="period-bar"><div class="period-tabs" role="group" aria-label="選擇統計期間"><button type="button" class="selected" data-period="week" aria-pressed="true">本週</button><button type="button" data-period="month" aria-pressed="false">本月</button></div><span id="periodRange"></span></section>
+  <section class="journey-stats" aria-label="本期運動摘要"><article><span>運動次數</span><strong id="statSessions">0</strong><small>次</small></article><article><span>累積距離</span><strong id="statDistance">0.00</strong><small>km</small></article><article><span>運動時間</span><strong id="statDuration">0 分</strong><small>不含示範</small></article><article><span>平均配速</span><strong id="statPace">—</strong><small>分 / km</small></article></section>
+  <div class="journey-layout"><section class="journey-card trend-card"><div class="journey-card-head"><div><span class="overline">ACTIVITY TREND</span><h2>運動趨勢</h2></div><label>顯示<select id="trendMetric" aria-label="選擇趨勢圖指標"><option value="distance">距離（km）</option><option value="sessions">運動次數</option><option value="duration">時間（小時）</option><option value="pace">平均配速（分 / km）</option></select></label></div><div id="periodTrend" class="period-trend"></div><div id="trendChart" class="trend-chart"></div><p id="trendCaption" class="trend-caption">顯示最近 8 週的運動距離</p></section>
+    <aside class="journey-card goal-card"><div class="journey-card-head"><div><span class="overline">PERSONAL GOAL</span><h2>目標進度</h2></div><span id="goalPeriodBadge" class="goal-badge">每週</span></div><p id="goalSummary" class="goal-summary">設定每週或每月的距離／時間目標，追蹤目前完成進度。</p><div class="goal-meter"><div><strong id="goalCurrent">0</strong><span id="goalUnit">km</span></div><span id="goalPercent">尚未設定</span></div><progress id="goalProgress" max="100" value="0" aria-label="個人目標完成進度"></progress><p id="goalStatus" class="goal-status">完成一次運動後，這裡會更新進度。</p>
+      <form id="goalForm" class="goal-form"><strong>設定個人目標</strong><label>目標週期<select id="goalPeriod"><option value="week">每週</option><option value="month">每月</option></select></label><label>目標類型<select id="goalMetric"><option value="distance">累積距離</option><option value="duration">運動時間</option></select></label><label>目標數值<div class="goal-input"><input id="goalTarget" type="number" min="0.1" max="100000" step="0.1" required value="10"><span id="goalTargetUnit">km</span></div></label><button class="primary" type="submit">儲存目標</button><button id="clearGoal" class="clear-goal" type="button" hidden>清除目標</button></form>
+    </aside></div>
+  <p class="journey-note">只統計本機儲存的 GPS 運動紀錄；示範運動不列入。平均配速以總運動時間 ÷ 總距離估算。</p>
+  <footer class="progress-footer"><a href="index.html">← 返回 PACE 運動首頁</a><span>歷程與目標設定保存在這台裝置。</span></footer>
+</main>
+<script src="progress.js"></script>
+</body>
+</html>
