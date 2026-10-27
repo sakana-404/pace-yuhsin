@@ -2,6 +2,18 @@
 (() => {
   const $ = id => document.getElementById(id);
   const MAX_LAYERS = 10, MAX_BYTES = 5 * 1024 * 1024, REWARD_KEY = 'campus-move-rewards-v1';
+  const DEFAULT_PAINTS = [
+    { id: 'canvas-default-orange', name: '落日橘', color: '#d95432' },
+    { id: 'canvas-default-blue', name: '海灣藍', color: '#2f88b3' },
+    { id: 'canvas-default-green', name: '苔蘚綠', color: '#6b8f4e' },
+    { id: 'canvas-default-purple', name: '鳶尾紫', color: '#8b6aa8' },
+    { id: 'canvas-default-pink', name: '櫻花粉', color: '#d27990' },
+    { id: 'canvas-default-amber', name: '琥珀黃', color: '#bd963b' },
+    { id: 'canvas-default-gray', name: '石墨灰', color: '#394b47' },
+    { id: 'canvas-default-white', name: '雲霧白', color: '#e7e1d2' },
+    { id: 'canvas-default-teal', name: '深海青', color: '#264653' },
+    { id: 'canvas-default-sunflower', name: '向日葵黃', color: '#e9c46a' },
+  ];
   const layers = [];
   let map, renderedLayers = [];
   let paints = [];
@@ -9,11 +21,19 @@
   const safeNumber = n => typeof n === 'number' && Number.isFinite(n);
 
   function loadPaints() {
+    let unlocked = [];
     try {
       const saved = JSON.parse(localStorage.getItem(REWARD_KEY) || 'null');
-      paints = Array.isArray(saved?.pigments) ? saved.pigments.filter(p => p && typeof p.id === 'string' && typeof p.name === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)) : [];
-    } catch { paints = []; }
-    $('paintHelp').hidden = paints.length > 0;
+      unlocked = Array.isArray(saved?.pigments) ? saved.pigments.filter(p => p && typeof p.id === 'string' && typeof p.name === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)) : [];
+    } catch {}
+    const colors = new Set(DEFAULT_PAINTS.map(paint => paint.color.toLowerCase()));
+    paints = [...DEFAULT_PAINTS, ...unlocked.filter(paint => {
+      const color = paint.color.toLowerCase();
+      if (colors.has(color)) return false;
+      colors.add(color);
+      return true;
+    })];
+    $('paintHelp').hidden = false;
   }
 
   function refreshPaints() {
