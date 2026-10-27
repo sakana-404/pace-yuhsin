@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id), center=[24.1796,120.6495], KEY='campus-move-history-v1', REWARD_KEY='campus-move-rewards-v1';
+const $=id=>document.getElementById(id), center=[24.1796,120.6495], KEY='campus-move-history-v1', REWARD_KEY='campus-move-rewards-v1', DRAW_METERS=1000;
 const PAINTS=[{color:'#d95432',name:'落日橘'},{color:'#2f88b3',name:'海灣藍'},{color:'#6b8f4e',name:'苔蘚綠'},{color:'#8b6aa8',name:'鳶尾紫'},{color:'#d27990',name:'櫻花粉'},{color:'#bd963b',name:'琥珀黃'},{color:'#394b47',name:'石墨灰'},{color:'#e7e1d2',name:'雲霧白'}];
 // Base map source is defined in tiles.js (CARTO Voyager, OpenStreetMap data). Change it there for school-wide use.
 let records=[];
@@ -27,15 +27,15 @@ function persistRewards(){try{localStorage.setItem(REWARD_KEY,JSON.stringify(rew
 function activePaint(){return rewards.pigments.find(p=>p.id===rewards.activePaintId)||null;}
 function setRouteColor(color){if(route)route.setStyle({color});const key=document.querySelector('.track-key');if(key)key.style.background=color;const label=$('activePaintLabel');if(label)label.style.setProperty('--active-paint',color);if(session&&session.state!=='finished')session.trackColor=color;}
 function renderRewards(){
-    const total=Math.max(0,Number(rewards.totalMeters)||0), earned=Math.floor(total/10000), available=Math.max(0,earned-rewards.draws.length), remainder=total%10000, special=(rewards.draws.length+1)%5===0;
+    const total=Math.max(0,Number(rewards.totalMeters)||0), earned=Math.floor(total/DRAW_METERS), available=Math.max(0,earned-rewards.draws.length), remainder=total%DRAW_METERS, special=(rewards.draws.length+1)%5===0;
     $('rewardTotal').textContent=(total/1000).toFixed(2);$('rewardAvailable').textContent=available;
-    $('rewardProgress').value=available?100:remainder/100;$('rewardProgressLabel').textContent=available?`已解鎖 ${available} 次抽卡`: `再走 ${((10000-remainder)/1000).toFixed(2)} km 解鎖下一抽`;
+    $('rewardProgress').value=available?100:remainder/DRAW_METERS*100;$('rewardProgressLabel').textContent=available?`已解鎖 ${available} 次抽卡`: `再走 ${((DRAW_METERS-remainder)/1000).toFixed(2)} km 解鎖下一抽`;
     $('rewardDrawNo').textContent=`第 ${rewards.draws.length+1} 抽${special?' · 自選顏色':''}`;
     $('rewardDraw').disabled=available===0||drawing;$('rewardDraw').textContent=drawing?'翻卡中…':available?(special?'選擇顏色':'開始抽卡'):'尚未解鎖';
-    $('rewardDrawHint').textContent=available?(special?'這次是每 5 抽一次的自選機會，請挑選想要的顏料。':`你有 ${available} 次抽卡機會，每次抽出一種顏料。`):'每累積步行 10 公里，就能抽一次顏料。';
+    $('rewardDrawHint').textContent=available?(special?'這次是每 5 抽一次的自選機會，請挑選想要的顏料。':`你有 ${available} 次抽卡機會，每次抽出一種顏料。`):'每累積步行 1 公里，就能抽一次顏料。';
     $('rewardChooser').hidden=!(choosingColor&&available&&special);
     const shelf=$('pigmentShelf');shelf.replaceChildren();
-    if(!rewards.pigments.length){const empty=document.createElement('p');empty.className='reward-empty';empty.textContent='完成 10 公里後，來抽取第一份顏料。';shelf.append(empty);}
+    if(!rewards.pigments.length){const empty=document.createElement('p');empty.className='reward-empty';empty.textContent='完成 1 公里後，來抽取第一份顏料。';shelf.append(empty);}
     for(const paint of rewards.pigments){const button=document.createElement('button');button.type='button';button.className='pigment-chip'+(paint.id===rewards.activePaintId?' selected':'');button.setAttribute('aria-pressed',String(paint.id===rewards.activePaintId));button.title=`套用${paint.name}繪製軌跡`;button.innerHTML=`<i style="--paint:${paint.color}"></i><span>${paint.name}</span>`;button.onclick=()=>{rewards.activePaintId=paint.id;persistRewards();setRouteColor(paint.color);renderRewards();message(`軌跡顏色已套用：${paint.name}。`);};shelf.append(button);}
     const current=activePaint();$('activePaintLabel').textContent=current?`目前軌跡顏色：${current.name}`:'尚未選擇顏料';$('activePaintSwatch').style.background=current?.color||'#d95432';
     const chooser=$('rewardChooser');chooser.replaceChildren();if(choosingColor&&available&&special)for(const paint of PAINTS){const button=document.createElement('button');button.type='button';button.className='paint-option';button.innerHTML=`<i style="--paint:${paint.color}"></i><span>${paint.name}</span>`;button.onclick=()=>drawPaint(paint);chooser.append(button);}
@@ -43,8 +43,8 @@ function renderRewards(){
     for(const draw of [...rewards.draws].reverse()){const row=document.createElement('div');row.className='draw-row';const swatch=document.createElement('i');swatch.style.background=draw.color;const detail=document.createElement('span'),title=document.createElement('strong'),meta=document.createElement('small');title.textContent=`第 ${draw.drawNo} 抽 · ${draw.name}`;meta.textContent=new Date(draw.at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});detail.append(title,meta);row.append(swatch,detail);history.append(row);}
 }
 let drawing=false, choosingColor=false;
-function drawPaint(paint){if(drawing||Math.floor(rewards.totalMeters/10000)<=rewards.draws.length)return;drawing=true;choosingColor=false;$('flipCard').classList.remove('revealed');$('flipCard').classList.add('is-flipping');renderRewards();setTimeout(()=>{const drawNo=rewards.draws.length+1,id=`paint-${Date.now()}-${drawNo}`,entry={id,color:paint.color,name:paint.name,drawNo,acquiredAt:new Date().toISOString()};rewards.draws.push({drawNo,color:paint.color,name:paint.name,at:entry.acquiredAt,totalMeters:rewards.totalMeters});rewards.pigments.push(entry);rewards.activePaintId=id;persistRewards();drawing=false;$('flipCard').classList.remove('is-flipping');$('flipCard').classList.add('revealed');$('rewardResultName').textContent=paint.name;$('rewardResultSwatch').style.background=paint.color;setRouteColor(paint.color);renderRewards();message(`抽到${paint.name}，已加入顏料庫並套用到軌跡。`);},520);}
-function requestDraw(){if(drawing||Math.floor(rewards.totalMeters/10000)<=rewards.draws.length)return;if((rewards.draws.length+1)%5===0){choosingColor=true;renderRewards();return;}drawPaint(PAINTS[Math.floor(Math.random()*PAINTS.length)]);}
+function drawPaint(paint){if(drawing||Math.floor(rewards.totalMeters/DRAW_METERS)<=rewards.draws.length)return;drawing=true;choosingColor=false;$('flipCard').classList.remove('revealed');$('flipCard').classList.add('is-flipping');renderRewards();setTimeout(()=>{const drawNo=rewards.draws.length+1,id=`paint-${Date.now()}-${drawNo}`,entry={id,color:paint.color,name:paint.name,drawNo,acquiredAt:new Date().toISOString()};rewards.draws.push({drawNo,color:paint.color,name:paint.name,at:entry.acquiredAt,totalMeters:rewards.totalMeters});rewards.pigments.push(entry);rewards.activePaintId=id;persistRewards();drawing=false;$('flipCard').classList.remove('is-flipping');$('flipCard').classList.add('revealed');$('rewardResultName').textContent=paint.name;$('rewardResultSwatch').style.background=paint.color;setRouteColor(paint.color);renderRewards();message(`抽到${paint.name}，已加入顏料庫並套用到軌跡。`);},520);}
+function requestDraw(){if(drawing||Math.floor(rewards.totalMeters/DRAW_METERS)<=rewards.draws.length)return;if((rewards.draws.length+1)%5===0){choosingColor=true;renderRewards();return;}drawPaint(PAINTS[Math.floor(Math.random()*PAINTS.length)]);}
 function clearStart(){
     if(startMarker&&map)map.removeLayer(startMarker);startMarker=null;
 }
@@ -100,6 +100,9 @@ $('exportAll').onclick=()=>exportCSV(records);$('deleteAll').onclick=()=>{if(rec
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&session?.state==='running')pause('頁面已離開前景，為避免漏記與錯估已自動暫停。回到頁面後按「繼續」。');});
 window.addEventListener('beforeunload',e=>{if(session&&session.state!=='finished'){e.preventDefault();e.returnValue='';}});
 setInterval(()=>{if(session?.state==='running'&&!session.demo&&Date.now()-lastSignal>30000)pause('超過 30 秒沒有 GPS 更新，已自動暫停。請檢查定位後按繼續。');render();},1000);
+function refreshHistoryFromStorage(){try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved)){records=saved;renderHistory();}}catch{}}
+window.addEventListener('storage',event=>{if(event.key===KEY)refreshHistoryFromStorage();});
+window.addEventListener('pageshow',event=>{if(event.persisted)refreshHistoryFromStorage();});
 renderHistory();render();renderRewards();setRouteColor(activePaint()?.color||'#d95432');if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 $('rewardDraw').onclick=requestDraw;

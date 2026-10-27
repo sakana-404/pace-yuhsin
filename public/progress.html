@@ -7,12 +7,14 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="progress.css">
+<link rel="stylesheet" href="progress-import.css">
 <title>個人歷程與目標 · PACE 校園運動</title>
 </head>
 <body>
 <main class="progress-page">
   <header class="progress-top"><a class="progress-brand" href="index.html">// PACE <span>校園運動</span></a><nav><a href="index.html">運動首頁</a><a href="canvas.html">我的畫布</a></nav></header>
   <section class="progress-intro"><div><span class="overline">YOUR MOVEMENT JOURNEY</span><h1>個人歷程與目標<span class="title-dot">.</span></h1><p>回顧每週、每月的運動累積，設定下一個想完成的目標。</p></div><a href="index.html#history">查看運動紀錄 ↗</a></section>
+  <section class="record-import"><div><span class="overline">IMPORT ACTIVITY</span><strong>匯入運動紀錄</strong><p>選取從「運動紀錄」匯出的 GPS 軌跡 JSON，可一次匯入多筆。匯入後會出現在運動紀錄與個人歷程。</p></div><label class="import-button">選擇 JSON 檔案<input id="recordFiles" type="file" accept=".json,application/json" multiple></label><span id="importStatus" role="status" aria-live="polite">資料只會儲存在這台裝置。</span></section>
   <section class="period-bar"><div class="period-tabs" role="group" aria-label="選擇統計期間"><button type="button" class="selected" data-period="week" aria-pressed="true">本週</button><button type="button" data-period="month" aria-pressed="false">本月</button></div><span id="periodRange"></span></section>
   <section class="journey-stats" aria-label="本期運動摘要"><article><span>運動次數</span><strong id="statSessions">0</strong><small>次</small></article><article><span>累積距離</span><strong id="statDistance">0.00</strong><small>km</small></article><article><span>運動時間</span><strong id="statDuration">0 分</strong><small>不含示範</small></article><article><span>平均配速</span><strong id="statPace">—</strong><small>分 / km</small></article></section>
   <div class="journey-layout"><section class="journey-card trend-card"><div class="journey-card-head"><div><span class="overline">ACTIVITY TREND</span><h2>運動趨勢</h2></div><label>顯示<select id="trendMetric" aria-label="選擇趨勢圖指標"><option value="distance">距離（km）</option><option value="sessions">運動次數</option><option value="duration">時間（小時）</option><option value="pace">平均配速（分 / km）</option></select></label></div><div id="periodTrend" class="period-trend"></div><div id="trendChart" class="trend-chart"></div><p id="trendCaption" class="trend-caption">顯示最近 8 週的運動距離</p></section>

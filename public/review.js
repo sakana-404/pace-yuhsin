@@ -2,11 +2,30 @@
 (() => {
   const $ = id => document.getElementById(id);
   const MAX_BYTES = 5 * 1024 * 1024;
+  const HISTORY_KEY = 'campus-move-history-v1';
   let reviewMap = null;
   let layer = null;
+  let activeRecord = null;
 
   const setStatus = text => { $('status').textContent = text; };
   const isNum = v => typeof v === 'number' && Number.isFinite(v);
+  const historyFingerprint = r => {
+    const first = r.points?.[0] || {}, last = r.points?.[r.points.length - 1] || {}, coord = n => isNum(n) ? n.toFixed(6) : '';
+    return [r.date, Number(r.meters).toFixed(3), Number(r.seconds).toFixed(3), coord(first.lat), coord(first.lng), coord(last.lat), coord(last.lng)].join('|');
+  };
+  function addToHistory() {
+    if (!activeRecord) return;
+    const status = $('addStatus');
+    let records;
+    try { records = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { records = []; }
+    if (!Array.isArray(records)) records = [];
+    const duplicate = records.some(record => record && ((record.id != null && activeRecord.id != null && String(record.id) === String(activeRecord.id)) || (Array.isArray(record.points) && record.points.length && historyFingerprint(record) === historyFingerprint(activeRecord))));
+    if (duplicate) { status.textContent = '這筆紀錄已在個人歷程與紀錄中。'; return; }
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify([activeRecord, ...records]));
+      status.textContent = '已加入個人歷程與紀錄，統計已更新。';
+    } catch { status.textContent = '裝置儲存空間不足，無法加入紀錄。'; }
+  }
   const fmtTime = sec => {
     const s = Math.floor(sec || 0);
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -51,6 +70,10 @@
   }
 
   function showTrack(r) {
+    activeRecord = r;
+    $('list').hidden = true;
+    $('historyActions').hidden = false;
+    $('addStatus').textContent = '匯入的軌跡目前只供檢視。';
     ensureMap();
     if (layer) layer.remove();
     layer = L.layerGroup().addTo(reviewMap);
@@ -132,6 +155,8 @@
   }
 
   function showList(rows, name) {
+    activeRecord = null;
+    $('historyActions').hidden = true;
     const head = rows[0], body = rows.slice(1);
     const distIdx = head.indexOf('距離 m');
     const kcalIdx = head.indexOf('總熱量 kcal');
@@ -166,6 +191,7 @@
       let r;
       try { r = JSON.parse(text); } catch { setStatus(f.name + ' 不是有效的 JSON 檔。'); return; }
       if (!validTrack(r)) { setStatus(f.name + ' 不是 PACE 的軌跡 JSON。請用「運動紀錄」的「軌跡」按鈕下載。'); return; }
+      r = { ...r, id: r.id ?? `import-${Date.now()}-${Math.random().toString(36).slice(2)}`, date: Number.isFinite(Date.parse(r.date)) ? r.date : new Date().toISOString(), mode: typeof r.mode === 'string' ? r.mode : '匯入運動紀錄', alias: typeof r.alias === 'string' ? r.alias : '', kcal: isNum(r.kcal) ? r.kcal : 0 };
       showTrack(r);
       showFacts(r);
       $('detail').hidden = false;
@@ -179,6 +205,7 @@
   }
 
   $('file').addEventListener('change', e => handleFiles(e.target.files));
+  $('addToHistory').addEventListener('click', addToHistory);
   const drop = $('drop');
   ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));

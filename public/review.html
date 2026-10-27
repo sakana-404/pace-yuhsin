@@ -27,6 +27,7 @@ h1{font-size:28px;margin:0 0 6px}
 .stats strong{font-size:24px}
 .stats small{color:var(--muted);font-size:12px;margin-left:4px}
 #reviewMap{height:380px;border-radius:12px;margin-top:12px;border:1px solid var(--line)}
+.review-actions{display:flex;align-items:center;gap:12px;margin-top:14px}.review-actions button{border:0;border-radius:5px;background:#43533d;color:#fff;padding:10px 14px;font:inherit;font-size:12px;cursor:pointer}.review-actions button:hover{background:#34432e}.review-actions span{font-size:12px;color:var(--muted)}
 dl{display:grid;grid-template-columns:150px 1fr;gap:8px 16px;margin:0;font-size:14px}
 dt{color:var(--muted)}
 dd{margin:0;word-break:break-word}
@@ -63,6 +64,7 @@ th{color:var(--muted);font-weight:600}
   <div id="reviewMap" aria-label="運動軌跡地圖"></div>
   <p class="note">藍色終點與綠色起點之間為實際記錄的軌跡。若有設定集合點，虛線為終點到集合點的直線距離，不是步行路線。</p>
   <dl id="facts" style="margin-top:14px"></dl>
+  <div id="historyActions" class="review-actions"><button id="addToHistory" type="button">加入個人歷程與紀錄</button><span id="addStatus" role="status" aria-live="polite">匯入的軌跡目前只供檢視。</span></div>
 </section>
 
 <section class="card" id="list" hidden>

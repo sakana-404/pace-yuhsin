@@ -9,7 +9,45 @@
   try { goal = JSON.parse(localStorage.getItem(GOAL_KEY) || 'null'); } catch { goal = null; }
 
   const finite = n => typeof n === 'number' && Number.isFinite(n);
-  const actualRecords = records.filter(r => r && !r.demo && Number.isFinite(Date.parse(r.date)) && finite(r.meters) && finite(r.seconds));
+  const recordIdentity = r => {
+    const first = r.points?.[0] || {}, last = r.points?.[r.points.length - 1] || {}, coord = n => finite(n) ? n.toFixed(6) : '';
+    return [r.date, Number(r.meters).toFixed(3), Number(r.seconds).toFixed(3), coord(first.lat), coord(first.lng), coord(last.lat), coord(last.lng)].join('|');
+  };
+  function normalizeRecord(record) {
+    if (!record || typeof record !== 'object' || Array.isArray(record) || !Array.isArray(record.points) || !record.points.length || record.points.length > 200000
+      || !finite(record.meters) || record.meters < 0 || !finite(record.seconds) || record.seconds <= 0
+      || !record.points.every(p => p && finite(p.lat) && finite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180)) return null;
+    const idDate = Number.isFinite(Number(record.id)) && Number(record.id) > 0 ? new Date(Number(record.id)) : null;
+    const date = Number.isFinite(Date.parse(record.date)) ? record.date : idDate && Number.isFinite(idDate.getTime()) ? idDate.toISOString() : new Date().toISOString();
+    return { ...record, id: record.id ?? `import-${Date.now()}-${Math.random().toString(36).slice(2)}`, date, demo: Boolean(record.demo), mode: typeof record.mode === 'string' ? record.mode : '匯入運動紀錄', alias: typeof record.alias === 'string' ? record.alias : '', kcal: finite(record.kcal) ? record.kcal : 0 };
+  }
+  async function importRecords(files) {
+    const status = $('importStatus'), additions = [], invalid = [], seenIds = new Set(records.filter(Boolean).map(r => String(r.id))), seenRecords = new Set(records.filter(r => r && Array.isArray(r.points) && r.points.length).map(recordIdentity));
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) { invalid.push(`${file.name} 超過 5 MB`); continue; }
+      try {
+        const parsed = JSON.parse((await file.text()).replace(/^\uFEFF/, ''));
+        for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
+          const record = normalizeRecord(item);
+          if (!record) { invalid.push(`${file.name} 含有格式不符的紀錄`); continue; }
+          const id = String(record.id), identity = recordIdentity(record);
+          if (seenIds.has(id) || seenRecords.has(identity)) continue;
+          seenIds.add(id); seenRecords.add(identity); additions.push(record);
+        }
+      } catch { invalid.push(`${file.name} 不是有效的 JSON`); }
+    }
+    if (additions.length) {
+      const updated = [...additions, ...records];
+      try {
+        localStorage.setItem(RECORDS_KEY, JSON.stringify(updated));
+        records = updated; renderPeriod(); renderGoal();
+        status.textContent = `已匯入 ${additions.length} 筆紀錄${invalid.length ? `；${invalid.join('；')}` : ''}`;
+      } catch { status.textContent = '裝置儲存空間不足，紀錄未能匯入。'; }
+    } else if (invalid.length) status.textContent = invalid.join('；');
+    else status.textContent = '沒有新增紀錄；選取的紀錄可能已匯入過。';
+    $('recordFiles').value = '';
+  }
+  const actualRecords = () => records.filter(r => r && !r.demo && Number.isFinite(Date.parse(r.date)) && finite(r.meters) && finite(r.seconds));
   const startOfPeriod = (kind, offset = 0) => {
     const now = new Date();
     if (kind === 'week') {
@@ -23,7 +61,7 @@
   const nextPeriod = (date, kind) => kind === 'week' ? new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7) : new Date(date.getFullYear(), date.getMonth() + 1, 1);
   const aggregate = (kind, offset = 0) => {
     const start = startOfPeriod(kind, offset), end = nextPeriod(start, kind);
-    const rows = actualRecords.filter(r => { const date = new Date(r.date); return date >= start && date < end; });
+    const rows = actualRecords().filter(r => { const date = new Date(r.date); return date >= start && date < end; });
     const meters = rows.reduce((sum, r) => sum + Math.max(0, r.meters), 0);
     const seconds = rows.reduce((sum, r) => sum + Math.max(0, r.seconds), 0);
     return { start, end, rows, sessions: rows.length, meters, seconds, pace: meters > 0 ? seconds / meters * 1000 / 60 : null };
@@ -123,6 +161,7 @@
     renderPeriod();
   }));
   $('trendMetric').addEventListener('change', drawTrend);
+  $('recordFiles').addEventListener('change', event => importRecords([...event.target.files]));
   $('goalMetric').addEventListener('change', updateGoalUnit);
   $('goalForm').addEventListener('submit', event => {
     event.preventDefault();
