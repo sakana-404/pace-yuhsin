@@ -57,6 +57,8 @@ next-env.d.ts
 /.dev.vars
 /.dev.vars.*
 *.tsbuildinfo
+/data/workout-records.json
+/data/workout-records.json.tmp-*
 
 # 測試結果的檔案資料夾
 /my-tracks/

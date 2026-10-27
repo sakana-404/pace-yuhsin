@@ -55,6 +55,24 @@ TEACHER_EMAILS="teacher@example.com"
 
 正式部署時，請在目標平台設定 `TEACHER_EMAILS`，並提供 D1 資料庫綁定。本機開發與建置使用的 D1 綁定名稱（`DB`）寫在 `vite.config.ts`。
 
+## 本機運動摘要 JSON 服務
+
+此服務可把匯出的運動 JSON 摘要保存到專案的 `data/workout-records.json`，不會連接前端或 Cloudflare D1。啟動服務後，將單筆紀錄 JSON 或 JSON 陣列送至匯入端點：
+
+```powershell
+npm run records:server
+```
+
+服務預設只監聽本機 `127.0.0.1:8788`。另一個 PowerShell 視窗可用以下命令匯入一筆檔案：
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8788/api/workouts/import -Method Post -ContentType "application/json" -InFile .\my-tracks\campus-track.json
+```
+
+匯入器只保存運動時間、文字地點（JSON 的 `location`、`place`、`locationName` 或 `campus` 欄位）、課堂代號、使用者識別碼（若有）、性別、年齡、身高、體重、體脂率、活動類型、運動時間、距離、MET 與熱量。GPS 點、軌跡、集合點座標和其他未列入摘要的欄位不會寫入。服務會建立本機 JSON 檔，並忽略該檔及暫存檔，避免把個人運動資料提交到 Git。
+
+檢查服務狀態：`http://127.0.0.1:8788/health`。若 JSON 沒有文字地點欄位，`location` 會保存為 `null`；服務不會根據座標推算地點。
+
 ## 測試
 
 ```bash
@@ -75,6 +93,7 @@ npm run lint
 | `public/tiles.js` | 底圖設定，集中在一個地方 |
 | `app/api/classroom/route.ts`、`lib/classroom.ts` | 班級 API 與權限規則 |
 | `db/`、`drizzle/` | 資料庫 schema 與 migration |
+| `server/workout-records.mjs`、`data/workout-records.json` | 本機運動摘要匯入服務與 JSON 儲存檔（服務首次啟動時建立） |
 | `tests/classroom.mjs` | 班級功能的隔離測試 |
 | `site-template/` | 學生範本的檔案 |
 | `scripts/sync-pages.sh` | 同步網站與範本到 Pages 倉庫 |
